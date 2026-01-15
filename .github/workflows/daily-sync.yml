@@ -29,14 +29,21 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # 1. Add upstream repository (the source dataset)
-          git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data
+          # 1. Clone the upstream repository to a temporary directory
+          git clone https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data /tmp/upstream-repo
 
-          # 2. Fetch the latest data from upstream
-          git fetch upstream main
+          # 2. Copy all files from upstream to current directory, excluding .git
+          rsync -av --delete /tmp/upstream-repo/ ./ \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='README.md' \
+            --exclude='task.md' \
+            --exclude='*.py' \
+            --exclude='*.sh' \
+            --exclude='requirements.txt'
 
-          # 3. Merge data, preferring upstream in case of conflicts (-X theirs)
-          git merge upstream/main -m "Auto-sync from upstream [skip ci]" -X theirs
+          # 3. Remove the temporary directory
+          rm -rf /tmp/upstream-repo
 
           # 4. Check if there are changes to commit
           if [[ -n $(git status --porcelain) ]]; then
