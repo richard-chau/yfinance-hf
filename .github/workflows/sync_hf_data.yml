@@ -1,9 +1,9 @@
-name: Daily Sync from Hugging Face Dataset
+name: Data Sync to My HF
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Runs daily at midnight UTC (which is 8 AM Beijing time)
-  workflow_dispatch:      # Allows manual trigger
+    - cron: '0 0 * * *' # 每天北京时间早上 8 点左右运行
+  workflow_dispatch:      # 允许你点击按钮手动运行
 
 jobs:
   sync-job:
@@ -12,34 +12,39 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          lfs: true # Enable LFS support
+          lfs: true # 开启 LFS 支持
           fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          pip install python-dotenv
 
       - name: Global Config
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git config --global user.name 'winterandchaiyun'
+          git config --global user.email 'alex.zhou@example.com'
           git lfs install
 
       - name: Sync Data
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # 1. Add upstream repository (source)
-          git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data || echo "Upstream remote already exists"
+          # 1. 添加原作者地址 (Upstream)
+          git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data
 
-          # 2. Add your own repository as target (optional)
-          git remote add target https://${{ github.actor }}:${{ secrets.HF_TOKEN }}@huggingface.co/datasets/${{ github.repository_owner }}/yahoo-finance-data || echo "Target remote already exists"
+          # 2. 添加你自己的地址 (Target)
+          git remote add target https://winterandchaiyun:${{ secrets.HF_TOKEN }}@huggingface.co/datasets/winterandchaiyun/yahoo-finance-data
 
-          # 3. Fetch latest data from upstream
+          # 3. 拉取原作者最新的数据到 GitHub 临时空间
           git fetch upstream main
 
-          # 4. Reset to upstream/main to ensure we have the latest data
-          git reset --hard upstream/main
+          # 4. 合并数据，如果有冲突以原作者的为准 (-X theirs)
+          git merge upstream/main -m "Auto-sync from bwzheng2010" -X theirs
 
-          # 5. Push to your GitHub repository
-          git push origin main --force-with-lease
-
-          # 6. Push to your Hugging Face dataset (optional - only if you have it created)
-          # Uncomment the next line if you want to push to your Hugging Face dataset
-          # git push target main --force
+          # 5. 把合并后的完整数据（含 LFS 大文件）推送到你自己的 HF 页面
+          git push target main --force
