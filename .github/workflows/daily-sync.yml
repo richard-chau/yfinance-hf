@@ -16,12 +16,19 @@ jobs:
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
         git lfs install
 
-    - name: Clone upstream repository
+    - name: Set up Hugging Face credentials
       env:
         HF_TOKEN: ${{ secrets.HF_TOKEN }}
       run: |
+        if [ ! -z "$HF_TOKEN" ]; then
+          git config --global credential.helper store
+          echo "https://hf_$HF_TOKEN@huggingface.co" > ~/.git-credentials
+        fi
+
+    - name: Clone upstream repository
+      run: |
         # Clone the upstream Hugging Face dataset
-        git clone https://hf_${HF_TOKEN}@huggingface.co/datasets/bwzheng2010/yahoo-finance-data upstream-repo
+        git clone https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data upstream-repo
         cd upstream-repo
         git lfs pull
 
