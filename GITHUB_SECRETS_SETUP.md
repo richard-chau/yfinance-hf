@@ -28,15 +28,23 @@ To use this repository with the automated sync workflow, you need to configure t
 
 2. **Token Permissions**: The token should have write permissions if you plan to push data to your Hugging Face datasets.
 
-3. **Local Development**: For local development, store your token in the `.env` file in the parent directory (`../.env`) with the format:
+3. **Hugging Face Dataset Creation**: Before the workflow can push data to your Hugging Face account, you need to create the dataset repository on Hugging Face first:
+   - Go to [Hugging Face Create Dataset](https://huggingface.co/datasets/new)
+   - Choose "Dataset" type
+   - Set the name to "yahoo-finance-data" (or whatever matches your workflow)
+   - Set visibility as needed (public/private)
+   - Click "Create Dataset"
+
+4. **Local Development**: For local development, store your token in the `.env` file in the parent directory (`../.env`) with the format:
    ```
    HF_TOKEN=your_actual_token_here
    ```
 
-4. **Workflow Schedule**: The workflow runs daily at midnight UTC (which is around 8 AM Beijing time).
+5. **Workflow Schedule**: The workflow runs daily at midnight UTC (which is around 8 AM Beijing time).
 
 ## Troubleshooting
 
 - If the workflow fails, check the GitHub Actions logs for error messages
 - Ensure your Hugging Face token has the correct permissions
 - Verify that your target dataset exists on Hugging Face
+- Make sure you've created the dataset repository on Hugging Face before running the workflow

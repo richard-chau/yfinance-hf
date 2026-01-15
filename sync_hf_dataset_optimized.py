@@ -53,8 +53,8 @@ def initialize_git_lfs():
 def setup_git_config():
     """Configure git user information"""
     print("Setting up git configuration...")
-    run_command(["git", "config", "user.name", "winterandchaiyun"])
-    run_command(["git", "config", "user.email", "alex.zhou@example.com"])
+    run_command(["git", "config", "user.name", "richard-chau"])
+    run_command(["git", "config", "user.email", "richard.chau@example.com"])
     print("Git configuration completed.")
 
 
@@ -71,7 +71,7 @@ def setup_remotes(hf_token):
     run_command(["git", "remote", "add", "upstream", upstream_url])
 
     # Add target remote (your Hugging Face dataset)
-    target_username = "winterandchaiyun"  # This should be updated to your actual username
+    target_username = "richard-chau"  # This should be updated to your actual username
     target_url = f"https://{target_username}:{hf_token}@huggingface.co/datasets/{target_username}/yahoo-finance-data"
     run_command(["git", "remote", "add", "target", target_url])
 
