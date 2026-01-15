@@ -10,47 +10,56 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Target Repo
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        lfs: true # Enable LFS support
-        token: ${{ secrets.GITHUB_TOKEN }}
-
     - name: Set up Git Configuration
       run: |
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
         git lfs install
 
-    - name: Sync with Upstream
+    - name: Clone upstream repository
       env:
         HF_TOKEN: ${{ secrets.HF_TOKEN }}
       run: |
-        # Add upstream repository
-        git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data
-        
-        # Fetch upstream data (metadata only initially)
-        git fetch upstream main
-        
-        # Merge upstream changes, preferring upstream in case of conflicts
-        git merge upstream/main -m "Sync: Update from upstream" --allow-unrelated-histories -X theirs
+        # Clone the upstream Hugging Face dataset
+        git clone https://hf_${HF_TOKEN}@huggingface.co/datasets/bwzheng2010/yahoo-finance-data upstream-repo
+        cd upstream-repo
+        git lfs pull
 
-    - name: Commit and Push Changes
-      env:
-        HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Checkout target repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        path: target-repo
+
+    - name: Copy files from upstream to target
       run: |
-        # Configure git for pushing
-        git config credential.helper store
-        git remote set-url origin https://github.com/${{ github.repository }}.git
-        
+        # Copy data files from upstream to target, excluding .git directories and GitHub-specific files
+        # This preserves our workflow files and other GitHub-specific configurations
+        rsync -av --delete ./upstream-repo/ ./target-repo/ \
+          --exclude='.git/' \
+          --exclude='.github/' \
+          --exclude='README.md' \
+          --exclude='task.md' \
+          --exclude='*.py' \
+          --exclude='*.sh' \
+          --exclude='requirements.txt'
+
+    - name: Commit and push changes
+      working-directory: ./target-repo
+      run: |
+        git add .
+
         # Check for changes
-        if [[ -n $(git status --porcelain) ]]; then
-          echo "Changes detected, committing and pushing..."
-          git add .
-          git commit -m "Auto-sync from upstream [skip ci]"
+        if ! git diff --cached --quiet; then
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          git commit -m "Sync with upstream Hugging Face dataset [skip ci]"
+
+          # Set up credentials for pushing
+          git remote set-url origin https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+
           git push origin main
         else
-          echo "No changes detected."
+          echo "No changes to commit"
         fi
