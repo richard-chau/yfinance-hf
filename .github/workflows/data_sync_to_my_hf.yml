@@ -1,0 +1,66 @@
+name: Data Sync to My HF
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # 每天 UTC 0:00 运行（北京时间早上 8 点左右）
+  workflow_dispatch:      # 允许你点击按钮手动运行
+
+jobs:
+  sync-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          lfs: true # 开启 LFS 支持
+          fetch-depth: 0
+
+      - name: Global Config
+        run: |
+          git config --global user.name 'winterandchaiyun'
+          git config --global user.email 'alex.zhou@example.com'
+          git lfs install
+
+      - name: Sync Data
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -e
+          
+          # 检查 HF_TOKEN
+          if [ -z "$HF_TOKEN" ]; then
+            echo "错误: HF_TOKEN 未设置"
+            echo "请在 GitHub Secrets 中设置 HF_TOKEN"
+            exit 1
+          fi
+          
+          # 1. 添加原作者地址 (Upstream)
+          echo "添加 upstream remote..."
+          git remote remove upstream 2>/dev/null || true
+          git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data
+          
+          # 2. 添加你自己的地址 (Target)
+          echo "添加 target remote..."
+          git remote remove target 2>/dev/null || true
+          git remote add target https://winterandchaiyun:$HF_TOKEN@huggingface.co/datasets/winterandchaiyun/yahoo-finance-data
+          
+          # 3. 拉取原作者最新的数据（包括 LFS 文件）
+          echo "从 upstream 拉取数据..."
+          git fetch upstream main
+          
+          # 4. 拉取所有 LFS 文件
+          echo "拉取 LFS 文件..."
+          git lfs fetch upstream main || echo "LFS fetch 警告，继续..."
+          git lfs pull upstream main || echo "LFS pull 警告，继续..."
+          
+          # 5. 合并数据，如果有冲突以原作者的为准 (-X theirs)
+          echo "合并数据..."
+          git merge upstream/main -m "Auto-sync from bwzheng2010 [skip ci]" -X theirs --allow-unrelated-histories || true
+          
+          # 6. 把合并后的完整数据（含 LFS 大文件）推送到你自己的 HF 页面
+          echo "推送到 Hugging Face..."
+          git lfs push target main --all || echo "LFS push 警告，继续尝试普通 push..."
+          git push target main --force
+          
+          echo "✓ 同步完成！数据已推送到 Hugging Face"
+          echo "注意: GitHub 仓库只存储代码，数据集存储在 Hugging Face"
