@@ -26,19 +26,19 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           # 1. Add upstream repository (source)
-          git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data
+          git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data || echo "Upstream remote already exists"
 
-          # 2. Add your own repository as target
-          git remote add target https://${{ github.actor }}:${{ secrets.HF_TOKEN }}@huggingface.co/datasets/${{ github.repository_owner }}/yahoo-finance-data
+          # 2. Add your own repository as target (optional)
+          git remote add target https://${{ github.actor }}:${{ secrets.HF_TOKEN }}@huggingface.co/datasets/${{ github.repository_owner }}/yahoo-finance-data || echo "Target remote already exists"
 
           # 3. Fetch latest data from upstream
           git fetch upstream main
 
-          # 4. Merge data, preferring upstream in case of conflicts
-          git merge upstream/main -m "Auto-sync from bwzheng2010 [skip ci]" -X theirs
+          # 4. Reset to upstream/main to ensure we have the latest data
+          git reset --hard upstream/main
 
-          # 5. Push merged data to your GitHub repository
-          git push origin main
+          # 5. Push to your GitHub repository
+          git push origin main --force-with-lease
 
           # 6. Push to your Hugging Face dataset (optional - only if you have it created)
           # Uncomment the next line if you want to push to your Hugging Face dataset
