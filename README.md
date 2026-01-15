@@ -19,11 +19,12 @@ This repository contains scripts and workflows to automatically sync a Hugging F
    - Get your token from [Hugging Face Settings](https://huggingface.co/settings/tokens)
    - Replace `your_actual_token_here` in `.env` with your actual token
 
-4. Create your own Hugging Face dataset repository:
+4. Create your own Hugging Face dataset repository (CRITICAL STEP):
    - Go to [Hugging Face Hub](https://huggingface.co/datasets)
    - Click "New Dataset"
    - Choose a name like `your-username/yahoo-finance-data`
    - Make sure to enable Git-based operations
+   - NOTE: The GitHub Actions workflow will FAIL until you create this dataset repository
 
 5. Update the GitHub Actions workflow files to use your username:
    - Several workflow files exist in `.github/workflows/`
