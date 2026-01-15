@@ -5,6 +5,9 @@ on:
     - cron: '0 0 * * *' # Runs daily at midnight UTC
   workflow_dispatch:      # Allow manual trigger
 
+permissions:
+  contents: write  # Grant write permission to commit and push changes
+
 jobs:
   sync-job:
     runs-on: ubuntu-latest
@@ -14,6 +17,7 @@ jobs:
         with:
           lfs: true # Enable LFS support
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Global Config
         run: |
@@ -34,5 +38,13 @@ jobs:
           # 3. Merge data, preferring upstream in case of conflicts (-X theirs)
           git merge upstream/main -m "Auto-sync from upstream [skip ci]" -X theirs
 
-          # 4. Push updates to the current repository (GitHub)
-          git push origin main
+          # 4. Check if there are changes to commit
+          if [[ -n $(git status --porcelain) ]]; then
+            git add .
+            git commit -m "Auto-sync from upstream [skip ci]"
+
+            # 5. Push updates to the current repository (GitHub)
+            git push origin main
+          else
+            echo "No changes to commit"
+          fi
