@@ -25,13 +25,16 @@ jobs:
     - name: Initialize Git LFS
       run: git lfs install
 
-    - name: Clone upstream repository
+    - name: Set up Hugging Face credentials
       run: |
         if [ ! -z "${{ secrets.HF_TOKEN }}" ]; then
-          git clone https://${{ secrets.HF_TOKEN }}@huggingface.co/datasets/bwzheng2010/yahoo-finance-data upstream-repo
-        else
-          git clone https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data upstream-repo
+          git config --global credential.helper store
+          echo "https://${{ secrets.HF_TOKEN }}@huggingface.co" > ~/.git-credentials
         fi
+
+    - name: Clone upstream repository
+      run: |
+        git clone https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data upstream-repo
 
     - name: Checkout target repository
       uses: actions/checkout@v4
