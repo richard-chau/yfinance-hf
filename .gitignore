@@ -8,3 +8,10 @@ __pycache__/
 *$pyc
 *$pyo
 split/*
+
+# Environment variables
+.env
+*.env
+
+# Git LFS
+.gitattributes
