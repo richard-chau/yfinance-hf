@@ -1,51 +1,50 @@
-name: Daily Sync from Hugging Face Dataset
+name: Daily Sync to My HF
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Runs daily at midnight UTC
-  workflow_dispatch:      # Allows manual trigger
+    - cron: '0 0 * * *' # 每天 UTC 时间 00:00 运行 (北京时间早上 8 点左右)
+  workflow_dispatch:      # 允许你点击按钮手动运行
 
 jobs:
-  sync-from-upstream:
+  sync-job:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Target Repo
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        lfs: true # Enable LFS support to handle large files
-        token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          lfs: true # 开启 LFS 支持
+          fetch-depth: 0
 
-    - name: Set up Git Configuration
-      run: |
-        git config --global user.name 'github-actions[bot]'
-        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        git lfs install
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
 
-    - name: Sync with Upstream
-      env:
-        HF_TOKEN: ${{ secrets.HF_TOKEN }}
-      run: |
-        # Add the upstream repository
-        git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data
-        
-        # Fetch upstream data (metadata only, not LFS files yet)
-        git fetch upstream main
-        
-        # Merge upstream changes, preferring upstream in case of conflicts
-        git merge upstream/main -m "Sync: Update from upstream [skip ci]" --allow-unrelated-histories -X theirs
+      - name: Install dependencies
+        run: |
+          pip install python-dotenv
 
-    - name: Commit and Push Changes
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        # Check if there are changes to commit
-        if [[ -n $(git status --porcelain) ]]; then
-          git add .
-          git commit -m "Auto-sync from upstream [skip ci]"
-          git push origin main
-          echo "Changes pushed to repository"
-        else
-          echo "No changes to commit"
-        fi
+      - name: Global Config
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git lfs install
+
+      - name: Sync Data
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # 1. 添加原作者地址 (Upstream)
+          git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data
+          
+          # 2. 添加你自己的地址 (Target)
+          git remote add target https://${{ github.actor }}:${{ secrets.HF_TOKEN }}@huggingface.co/datasets/${{ github.repository_owner }}/yahoo-finance-data
+          
+          # 3. 拉取原作者最新的数据到 GitHub 临时空间
+          git fetch upstream main
+          
+          # 4. 合并数据，如果有冲突以原作者的为准 (-X theirs)
+          git merge upstream/main -m "Auto-sync from bwzheng2010 [skip ci]" -X theirs
+          
+          # 5. 把合并后的完整数据（含 LFS 大文件）推送到你自己的 HF 页面
+          git push target main --force
