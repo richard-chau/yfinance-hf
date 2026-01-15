@@ -52,11 +52,12 @@ jobs:
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-        # The Python script handles the Hugging Face sync
-        # This step ensures the changes are also pushed back to GitHub
+        # Check if there are any changes to commit
         git add .
         if ! git diff --cached --quiet; then
+          echo "Changes detected, committing and pushing..."
           git commit -m "Automated sync from upstream Hugging Face dataset [skip ci]"
+          git pull --rebase  # Pull any changes that might have happened in the meantime
           git push
         else
           echo "No changes to commit"
