@@ -19,7 +19,7 @@ load_dotenv(env_path)
 
 # 配置
 UPSTREAM_REPO = "https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data"
-HF_USERNAME = "winterandchaiyun"
+HF_USERNAME = "richard-chau"
 TARGET_REPO = f"https://huggingface.co/datasets/{HF_USERNAME}/yahoo-finance-data"
 HF_TOKEN = os.getenv("HF_TOKEN")
 
