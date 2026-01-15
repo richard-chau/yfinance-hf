@@ -21,13 +21,14 @@ This repository contains scripts and workflows to automatically sync a Hugging F
 
 4. Create your own Hugging Face dataset repository:
    - Go to [Hugging Face Hub](https://huggingface.co/datasets)
-   - Click "New Dataset" 
+   - Click "New Dataset"
    - Choose a name like `your-username/yahoo-finance-data`
    - Make sure to enable Git-based operations
 
-5. Update the GitHub Actions workflow file `.github/workflows/sync_hf_data.yml`:
-   - Change the target repository URL to your own dataset repository
-   - The workflow currently assumes `winterandchaiyun/yahoo-finance-data` as target
+5. Update the GitHub Actions workflow files to use your username:
+   - Several workflow files exist in `.github/workflows/`
+   - Update all references from `winterandchaiyun` to your actual GitHub/HF username
+   - The files have been updated to use `richard-chau` as an example
 
 ## GitHub Secrets Required
 
