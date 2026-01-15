@@ -71,7 +71,12 @@ jobs:
           git fetch target main || echo "目标仓库为空或不存在，将创建新仓库"
           git checkout -b main || git checkout main || true
           
-          # 6. 只复制数据文件（不包含代码、workflow 等）
+          # 6. 清理现有文件（只保留数据文件）
+          echo "清理现有文件..."
+          # 删除所有文件（除了 .git）
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} \;
+          
+          # 7. 只复制数据文件（不包含代码、workflow 等）
           echo "复制数据文件..."
           # 复制所有 .parquet 文件（LFS 会自动处理）
           find ../upstream -name "*.parquet" -exec cp {} . \;
@@ -79,14 +84,16 @@ jobs:
           [ -f ../upstream/README.md ] && cp ../upstream/README.md . || true
           # 复制 spec.json（如果存在）
           [ -f ../upstream/spec.json ] && cp ../upstream/spec.json . || true
-          # 复制其他可能的数据相关文件（排除 Python 文件）
-          find ../upstream -maxdepth 1 -type f \( -name "*.json" -o -name "*.yaml" -o -name "*.yml" \) ! -name "*.py" -exec cp {} . \; 2>/dev/null || true
+          # 复制 dataset_infos.json（如果存在）
+          [ -f ../upstream/dataset_infos.json ] && cp ../upstream/dataset_infos.json . || true
+          [ -f ../upstream/dataset_info.json ] && cp ../upstream/dataset_info.json . || true
           
-          # 6. 添加并提交数据文件
+          # 8. 添加并提交数据文件
           git add -A
           if ! git diff --staged --quiet; then
             git commit -m "Auto-sync data from bwzheng2010/yahoo-finance-data [skip ci]"
             echo "推送到 Hugging Face..."
+            git lfs push target main --all
             git push target main --force
             echo "✓ 数据同步完成！"
           else
