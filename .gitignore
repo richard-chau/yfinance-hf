@@ -1,5 +1,10 @@
 *.crc
 .idea/.gitignore
 .idea/*
-*.py
+# Ignore Python cache files but not scripts
+__pycache__/
+*.py[cod]
+*$py.class
+*$pyc
+*$pyo
 split/*
