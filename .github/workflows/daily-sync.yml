@@ -1,0 +1,53 @@
+name: Daily Sync from Hugging Face Dataset
+
+on:
+  schedule:
+    # Run daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  sync-from-upstream:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0  # Fetch all history for proper merge
+
+    - name: Set up Git
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+    - name: Install Git LFS
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git-lfs
+        git lfs version
+
+    - name: Initialize Git LFS
+      run: git lfs install
+
+    - name: Fetch from upstream
+      run: |
+        if [ ! -z "${{ secrets.HF_TOKEN }}" ]; then
+          git remote add upstream https://${{ secrets.HF_TOKEN }}@huggingface.co/datasets/bwzheng2010/yahoo-finance-data
+        else
+          git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data
+        fi
+        git fetch upstream
+
+    - name: Merge upstream changes
+      run: |
+        git pull upstream main --allow-unrelated-histories || git pull upstream master --allow-unrelated-histories
+
+    - name: Push changes to GitHub
+      run: |
+        git push origin main || git push origin master
+
+    - name: Sync LFS objects
+      run: |
+        git lfs push --all origin
