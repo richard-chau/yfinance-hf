@@ -48,19 +48,35 @@ For the GitHub Actions workflow to work, you need to set up the following secret
 4. Select "Write" role if you plan to push updates to your dataset
 5. Copy the generated token and store it securely
 
-## GitHub Actions Workflow
+## GitHub Actions Workflows
 
-The workflow in `.github/workflows/sync_hf_data.yml` will:
+Several workflows are available in `.github/workflows/`:
+
+- `daily_sync_hf.yml`: The recommended workflow that properly handles Git LFS pointers
+- `sync_hf_data.yml`: Alternative workflow using the Python sync script
+- `daily_sync.yml`: Legacy workflow (may need updates)
+- `daily-sync.yml`: Another variant (may need updates)
+- `sync-dataset.yml`: Yet another variant (may need updates)
+
+The `daily_sync_hf.yml` workflow will:
 - Run daily at midnight UTC
 - Fetch the latest data from the upstream dataset (bwzheng2010/yahoo-finance-data)
 - Merge changes (preferring upstream in case of conflicts)
-- Push updates to your repository
+- Push updates to your GitHub repository
+- Optionally push to your own Hugging Face dataset repository
 
-You can also manually trigger the workflow from the Actions tab in your GitHub repository.
+You can also manually trigger any workflow from the Actions tab in your GitHub repository.
 
-## Manual Sync
+## Manual Sync Options
 
-To manually sync the dataset, run:
+Two options for manual sync:
+
+1. Using the improved Python script:
+```bash
+python sync_hf_data_improved.py
+```
+
+2. Using the original Python script:
 ```bash
 python sync_hf_data.py
 ```
@@ -71,3 +87,4 @@ python sync_hf_data.py
 - Conflicts are resolved by preferring upstream changes (`-X theirs`)
 - The `[skip ci]` tag in commit messages prevents triggering additional CI runs
 - Make sure your Hugging Face dataset repository exists before running the workflow
+- The improved sync script properly handles Git LFS pointers instead of copying raw large files

@@ -1,0 +1,67 @@
+name: Daily Sync HF Dataset
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at midnight UTC (8 AM Beijing time)
+  workflow_dispatch:      # Allows manual trigger
+
+jobs:
+  sync-job:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        lfs: true  # Enable LFS support
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        pip install python-dotenv
+
+    - name: Configure git globally
+      run: |
+        git config --global user.name 'richard-chau'
+        git config --global user.email 'richard.chau@example.com'
+        git lfs install
+
+    - name: Sync data from upstream HF dataset
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      run: |
+        # Add upstream remote (source dataset)
+        git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data || echo "Upstream remote already exists"
+        
+        # Fetch latest changes from upstream
+        git fetch upstream main
+        
+        # Merge upstream changes, preferring upstream in case of conflicts
+        git merge upstream/main -m "Auto-sync from bwzheng2010 [skip ci]" -X theirs --allow-unrelated-histories
+        
+        # Check if there are changes to commit
+        if ! git diff --quiet; then
+          echo "Changes detected, committing..."
+          git add .
+          git commit -m "Auto-sync from upstream HF dataset [skip ci]" || echo "Nothing to commit"
+          
+          # Push changes to GitHub
+          git push origin main
+          echo "Changes pushed to GitHub successfully."
+        else
+          echo "No changes to commit."
+        fi
+
+    - name: Push to your Hugging Face dataset (optional)
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      run: |
+        # If you have your own Hugging Face dataset repository and want to push there too:
+        git remote add hf-origin https://richard-chau:$HF_TOKEN@huggingface.co/datasets/richard-chau/yahoo-finance-data || echo "HF remote already exists"
+        git push hf-origin main --force || echo "Failed to push to Hugging Face (may not exist yet)"
