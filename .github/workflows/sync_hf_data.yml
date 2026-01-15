@@ -35,18 +35,19 @@ jobs:
     - name: Sync with Upstream
       env:
         HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        HF_USERNAME: ${{ secrets.HF_USERNAME }}
       run: |
-        # Add upstream repository
-        git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data
-        
-        # Fetch upstream data (metadata only, not LFS files initially)
-        git fetch upstream main
-        
-        # Force merge upstream changes, preferring upstream in case of conflicts
-        git merge upstream/main -m "Sync: Update from upstream [skip ci]" --allow-unrelated-histories -X theirs
+        # Create a temporary .env file with the HF credentials
+        echo "HF_TOKEN=${HF_TOKEN}" > .env
+        echo "HF_USERNAME=${HF_USERNAME:-${{ github.repository_owner }}}" >> .env
+
+        # Run the sync script
+        python sync_hf_data.py
 
     - name: Commit and push changes to GitHub
       run: |
+        # The Python script handles the Hugging Face sync
+        # This step ensures the changes are also pushed back to GitHub
         git add .
         if ! git diff --cached --quiet; then
           git commit -m "Automated sync from upstream Hugging Face dataset [skip ci]"
@@ -54,21 +55,3 @@ jobs:
         else
           echo "No changes to commit"
         fi
-
-    - name: Push to Hugging Face Hub
-      env:
-        HF_TOKEN: ${{ secrets.HF_TOKEN }}
-      run: |
-        # Assuming the target HF repo follows the pattern: username/dataset-name
-        # You should update this to match your actual HF username and dataset name
-        HF_USERNAME="${{ github.repository_owner }}"
-        TARGET_HF_REPO="huggingface.co/datasets/$HF_USERNAME/yahoo-finance-data"
-
-        # Add the HF remote
-        git remote add hf-origin https://"$HF_USERNAME":"$HF_TOKEN"@"$TARGET_HF_REPO"
-
-        # Push all changes to Hugging Face
-        git push hf-origin main
-
-        # Also push LFS objects
-        git lfs push hf-origin main

@@ -81,28 +81,31 @@ def push_to_target(target_repo_url, branch="main"):
 def main():
     # Load HF token from .env file
     from dotenv import load_dotenv
-    load_dotenv('../.env')  # Load from parent directory
+    load_dotenv('.env')  # Load from current directory
     hf_token = os.getenv("HF_TOKEN")
 
     if not hf_token or hf_token == "your_actual_token_here":
         print("Error: HF_TOKEN not properly set in .env file!")
-        print("Please update the HF_TOKEN in ../.env with your actual Hugging Face token")
+        print("Please update the HF_TOKEN in .env with your actual Hugging Face token")
         sys.exit(1)
-    
+
     # Initialize Git LFS
     initialize_git_lfs()
-    
+
     # Upstream repository (source)
     upstream_repo = "https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data"
-    
-    # Target repository (destination) - replace with your actual HF username/repo
-    # For now, we'll use the same repo as upstream, but you should change this to your own
-    target_repo = f"https://hf_username:{hf_token}@huggingface.co/datasets/hf_username/yahoo-finance-data"
-    
-    # Perform sync
+
+    # Perform sync from upstream
     sync_from_upstream(upstream_repo)
-    push_to_target(target_repo)
-    
+
+    # Optionally push to target Hugging Face repo if HF_USERNAME is provided
+    hf_username = os.getenv("HF_USERNAME", None)
+    if hf_username and hf_username != "your_username":
+        target_repo = f"https://{hf_username}:{hf_token}@huggingface.co/datasets/{hf_username}/yahoo-finance-data"
+        push_to_target(target_repo)
+    else:
+        print("Skipping push to Hugging Face (HF_USERNAME not set or is default value)")
+
     print("Sync completed successfully!")
 
 if __name__ == "__main__":
