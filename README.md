@@ -1,53 +1,101 @@
-# Yahoo Finance Data Mirror
+# Yahoo Finance Data Sync
 
-This repository contains a mirror of the [bwzheng2010/yahoo-finance-data](https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data) Hugging Face dataset, automatically synced daily.
+This repository contains scripts and GitHub Actions workflows to sync Yahoo Finance data from a Hugging Face dataset.
 
 ## Setup Instructions
 
 ### Prerequisites
 
-1. A GitHub account
-2. A Hugging Face account (to get an API token if needed)
+1. Install Git LFS:
+   ```bash
+   git lfs install
+   ```
+
+2. Install GitHub CLI (gh):
+   ```bash
+   # On Ubuntu/Debian
+   sudo apt install gh
+
+   # On macOS
+   brew install gh
+
+   # On Windows (using Chocolatey)
+   choco install gh
+   ```
+
+3. Install Python dependencies:
+   ```bash
+   pip install python-dotenv
+   ```
 
 ### Required GitHub Secrets
 
-For the daily sync to work properly, you need to configure the following GitHub Secrets in your repository settings:
+To use this repository, you need to add the following secrets to your GitHub repository:
 
-#### 1. `HF_TOKEN` (Optional but Recommended)
-- **Purpose**: Hugging Face API token for accessing datasets that may have access restrictions
-- **How to obtain**:
-  1. Go to your [Hugging Face account settings](https://huggingface.co/settings/tokens)
-  2. Click on "Access Tokens" tab
-  3. Click "New token" button
-  4. Give it a name (e.g., "github-sync-token") and select "Read" role
-  5. Copy the generated token
-  6. In your GitHub repository, go to Settings → Secrets and variables → Actions
-  7. Click "New repository secret", name it `HF_TOKEN`, and paste the token value
+1. **HF_TOKEN**: Your Hugging Face access token
+   - Go to [Hugging Face Tokens](https://huggingface.co/settings/tokens)
+   - Create a new token with read access (or write if you need to push updates)
+   - Copy the token value
+   - In your GitHub repository, go to Settings → Secrets and variables → Actions
+   - Add a new secret named `HF_TOKEN` with the copied value
 
-#### 2. `GITHUB_TOKEN` (Already Available)
-- **Purpose**: GitHub automatically provides this token for authenticating with the repository
-- **Note**: This is automatically available in GitHub Actions and typically doesn't need to be manually configured
+2. **GITHUB_TOKEN**: This is automatically provided by GitHub Actions (no need to set manually)
 
-### Setting Up the Daily Sync
+3. **PAT** (Personal Access Token, optional but recommended for push permissions):
+   - Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
+   - Generate a new token with `repo` scope
+   - Copy the token value
+   - In your GitHub repository, go to Settings → Secrets and variables → Actions
+   - Add a new secret named `PAT` with the copied value
+   - If you don't set PAT, the workflow will use GITHUB_TOKEN, but you may need to enable workflow permissions (see below)
 
-The repository is configured with a GitHub Action that runs daily at 00:00 UTC to sync the latest data from the upstream Hugging Face dataset.
+### GitHub Actions Permissions
 
-## Manual Sync
+For the workflow to run successfully, you need to ensure that GitHub Actions has permission to write to your repository:
 
-If you want to manually trigger a sync:
-1. Go to the "Actions" tab in your repository
-2. Find the "Daily Sync from Hugging Face Dataset" workflow
-3. Click "Run workflow" to trigger it manually
+1. Go to your repository Settings → Actions → General
+2. Under "Workflow permissions", select "Read and write permissions"
+3. Check "Allow GitHub Actions to create and approve pull requests"
 
-## Repository Structure
+Note: If you don't want to create a PAT, you can rely on the GITHUB_TOKEN but must enable the workflow permissions as described above.
 
-- `.github/workflows/daily-sync.yml` - GitHub Actions workflow for daily synchronization
-- `clone_dataset.py` - Python script to initially clone the dataset with git LFS support
+### Environment Variables
 
-## About Git LFS
+Create a `.env` file in the parent directory (`../.env`) with your tokens:
 
-This repository uses Git Large File Storage (LFS) to handle large files efficiently. Git LFS replaces large files with text pointers in the repository while storing the file contents on a remote server.
+```env
+HF_TOKEN=your_hugging_face_token_here
+```
 
-## License
+## Usage
 
-The license for this data follows that of the original [bwzheng2010/yahoo-finance-data](https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data) dataset.
+### Manual Sync
+
+To manually sync the dataset using the new script:
+
+```bash
+python clone_and_setup.py --dataset bwzheng2010/yahoo-finance-data --target-dir ./data
+```
+
+To manually sync the dataset using the original script:
+
+```bash
+python clone_dataset.py \
+  --dataset-url https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data \
+  --repo-dir ./data \
+  --upstream-url https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data \
+  --github-repo-url https://github.com/your-username/your-repo-name \
+  --github-token $GITHUB_TOKEN
+```
+
+### Automatic Daily Sync
+
+The GitHub Actions workflow will automatically sync the dataset daily at midnight UTC. You can also manually trigger the sync using the "workflow_dispatch" option in the Actions tab of your repository.
+
+## Architecture
+
+- `clone_and_setup.py`: New script to clone the Hugging Face dataset and set up upstream tracking (uses token from ../.env)
+- `clone_dataset.py`: Original script to clone the Hugging Face dataset and set up upstream tracking
+- `.github/workflows/daily-sync.yml`: GitHub Actions workflow for automatic daily sync
+- The workflow uses a dual-remote approach to sync from the Hugging Face dataset to your GitHub repository
+- Git LFS is properly configured to handle large files efficiently

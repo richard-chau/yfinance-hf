@@ -7,6 +7,7 @@ ENV/
 
 # Data files (large files)
 data/
+data-test/
 cache/
 
 # Logs
