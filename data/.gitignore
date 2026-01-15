@@ -1,0 +1,5 @@
+*.crc
+.idea/.gitignore
+.idea/*
+*.py
+split/*

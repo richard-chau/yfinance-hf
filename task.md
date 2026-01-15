@@ -2,7 +2,7 @@
 
 
 
-編寫一個 python 腳本，使用 git clone 下載我指定的 Hugging Face 數據集，並將原始數據集設置為 upstream。
+編寫一個 python 腳本，使用 把数据集定期 push 到 hugging face，不是 github，github 只存代码。。用 gha ci下載我指定的 Hugging Face 數據集，並將原始數據集設置為 upstream。
 
 確保腳本包含 git lfs 的初始化，以處理大文件。
 
