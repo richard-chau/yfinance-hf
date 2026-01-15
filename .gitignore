@@ -1,0 +1,17 @@
+*.crc
+.idea/.gitignore
+.idea/*
+# Ignore Python cache files but not scripts
+__pycache__/
+*.py[cod]
+*$py.class
+*$pyc
+*$pyo
+split/*
+
+# Environment variables
+.env
+*.env
+
+# Git LFS
+.gitattributes
