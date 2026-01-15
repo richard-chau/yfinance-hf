@@ -45,7 +45,13 @@ jobs:
         python sync_hf_data.py
 
     - name: Commit and push changes to GitHub
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
+        # Configure git to use GitHub token for authentication
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
         # The Python script handles the Hugging Face sync
         # This step ensures the changes are also pushed back to GitHub
         git add .
