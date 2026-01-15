@@ -1,14 +1,14 @@
-name: Daily HF Dataset Sync
+name: Sync Hugging Face Data
 
 on:
   schedule:
     - cron: '0 0 * * *'  # Runs daily at midnight UTC
-  workflow_dispatch:     # Allows manual trigger
+  workflow_dispatch:      # Allows manual trigger
 
 jobs:
   sync-data:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -19,43 +19,21 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.x'
 
       - name: Install dependencies
         run: |
           pip install python-dotenv
 
-      - name: Configure git for LFS
+      - name: Configure Git
         run: |
-          git config --global user.name 'richard-chau'
-          git config --global user.email 'richard.chau@example.com'
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git lfs install
 
       - name: Sync data from Hugging Face
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
         run: |
-          # Create temporary .env file with the token for the script
-          echo "HF_TOKEN=$HF_TOKEN" > .env
-
-          # Run the sync script
-          python sync_hf_data.py
-
-          # Clean up the temporary .env file
-          rm .env
-
-      - name: Push changes to GitHub
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config --global user.name 'richard-chau'
-          git config --global user.email 'richard.chau@example.com'
-
-          # Check for changes
-          if [[ -n $(git status --porcelain) ]]; then
-            git add .
-            git commit -m "Auto-sync from Hugging Face dataset [skip ci]" || echo "Nothing to commit"
-            git push origin main
-          else
-            echo "No changes to commit"
-          fi
+          python sync_hf_data_advanced.py

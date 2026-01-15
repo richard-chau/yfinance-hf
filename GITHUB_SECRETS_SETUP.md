@@ -1,50 +1,30 @@
 # GitHub Secrets Setup
 
-To use this repository with the automated sync workflow, you need to configure the following GitHub Secrets:
+To use the automated Hugging Face data sync workflow, you need to configure the following GitHub Secret:
 
 ## Required Secrets
 
-### `HF_TOKEN`
-- **Purpose**: Authentication token for Hugging Face API access
-- **How to get it**:
+### HF_TOKEN
+- **Purpose**: Authentication token for accessing Hugging Face datasets
+- **How to obtain**:
   1. Go to [Hugging Face Settings](https://huggingface.co/settings/tokens)
   2. Click on "Access Tokens" tab
   3. Click "New token" button
-  4. Give your token a name (e.g., "github-actions-token")
-  5. Select the appropriate role (typically "Write" for pushing datasets)
-  6. Copy the generated token
+  4. Give it a name (e.g., "github-actions-sync")
+  5. Select "Read" role for reading datasets (or "Write" if you need to push updates)
+  6. Click "Generate"
+  7. Copy the generated token
+
 - **How to add to GitHub**:
   1. Go to your GitHub repository
   2. Click on "Settings" tab
-  3. In the left sidebar, click on "Secrets and variables" → "Actions"
+  3. In the left sidebar, click on "Secrets and variables" > "Actions"
   4. Click "New repository secret"
-  5. Name it `HF_TOKEN`
-  6. Paste your Hugging Face token as the value
+  5. Name: `HF_TOKEN`
+  6. Paste the token value you copied from Hugging Face
   7. Click "Add secret"
 
 ## Important Notes
-
-1. **Security**: Never commit tokens directly to the codebase. Always use GitHub Secrets for sensitive information.
-
-2. **Token Permissions**: The token should have write permissions if you plan to push data to your Hugging Face datasets.
-
-3. **Hugging Face Dataset Creation**: Before the workflow can push data to your Hugging Face account, you need to create the dataset repository on Hugging Face first:
-   - Go to [Hugging Face Create Dataset](https://huggingface.co/datasets/new)
-   - Choose "Dataset" type
-   - Set the name to "yahoo-finance-data" (or whatever matches your workflow)
-   - Set visibility as needed (public/private)
-   - Click "Create Dataset"
-
-4. **Local Development**: For local development, store your token in the `.env` file in the parent directory (`../.env`) with the format:
-   ```
-   HF_TOKEN=your_actual_token_here
-   ```
-
-5. **Workflow Schedule**: The workflow runs daily at midnight UTC (which is around 8 AM Beijing time).
-
-## Troubleshooting
-
-- If the workflow fails, check the GitHub Actions logs for error messages
-- Ensure your Hugging Face token has the correct permissions
-- Verify that your target dataset exists on Hugging Face
-- Make sure you've created the dataset repository on Hugging Face before running the workflow
+- Keep your token secure and never share it publicly
+- The token should have appropriate permissions based on what operations you need
+- If you need to rotate the token, generate a new one and update the GitHub secret
