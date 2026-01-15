@@ -59,6 +59,17 @@ For the workflow to run successfully, you need to ensure that GitHub Actions has
 
 Note: If you don't want to create a PAT, you can rely on the GITHUB_TOKEN but must enable the workflow permissions as described above.
 
+### Important: Enable Workflow Permissions
+
+For the daily sync to work properly, you need to specifically enable workflow permissions:
+
+1. Go to your repository Settings → Actions → General
+2. In the "Workflow permissions" section, select the radio button for "Read and write permissions"
+3. Also check the box "Allow GitHub Actions to create and approve pull requests"
+4. Click "Save" to apply the changes
+
+This will allow the `github-actions[bot]` to push changes back to your repository.
+
 ### Environment Variables
 
 Create a `.env` file in the parent directory (`../.env`) with your tokens:
