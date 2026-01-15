@@ -1,128 +1,117 @@
+#!/usr/bin/env python3
+"""
+Script to sync data from Hugging Face dataset to local repository
+"""
+
 import os
 import subprocess
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-def load_hf_token():
-    """Load HF token from ../.env file"""
-    # Load from parent directory as specified
-    env_path = Path(__file__).parent.parent / '.env'
+def load_env():
+    """Load environment variables from .env file"""
+    env_path = Path(__file__).parent / ".." / ".env"
     load_dotenv(dotenv_path=env_path)
-    
-    hf_token = os.getenv('HF_TOKEN')
-    if not hf_token or hf_token == 'your_actual_token_here':
-        raise ValueError("HF_TOKEN not found in ../.env file or still has default value. Please update the .env file with your actual token.")
-    
-    return hf_token
+    return os.getenv('HF_TOKEN')
+
+def run_command(cmd, cwd=None):
+    """Run a shell command and return the result"""
+    print(f"Running: {' '.join(cmd) if isinstance(cmd, list) else cmd}")
+    try:
+        result = subprocess.run(
+            cmd,
+            shell=isinstance(cmd, str),
+            cwd=cwd,
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        print(result.stdout)
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        print(f"Error running command: {e}")
+        print(f"Stderr: {e.stderr}")
+        raise
 
 def initialize_git_lfs():
-    """Initialize git lfs to handle large files"""
+    """Initialize Git LFS for handling large files"""
     print("Initializing Git LFS...")
-    try:
-        subprocess.run(['git', 'lfs', 'install'], check=True)
-        print("Git LFS initialized successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error initializing Git LFS: {e}")
-        sys.exit(1)
+    run_command(["git", "lfs", "install"])
+    print("Git LFS initialized successfully.")
 
-def sync_from_upstream(hf_token):
-    """Sync data from upstream Hugging Face dataset"""
-    print("Starting sync from upstream Hugging Face dataset...")
+def setup_remotes(hf_token):
+    """Setup upstream and target remotes"""
+    print("Setting up remotes...")
     
-    # Add upstream remote
-    upstream_url = "https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data"
-    try:
-        subprocess.run(['git', 'remote', 'add', 'upstream', upstream_url], check=True)
-        print("Added upstream remote successfully.")
-    except subprocess.CalledProcessError:
-        # Remote might already exist, try removing and re-adding
-        try:
-            subprocess.run(['git', 'remote', 'remove', 'upstream'], check=True)
-            subprocess.run(['git', 'remote', 'add', 'upstream', upstream_url], check=True)
-            print("Re-added upstream remote successfully.")
-        except subprocess.CalledProcessError as e:
-            print(f"Error managing upstream remote: {e}")
-            sys.exit(1)
+    # Add upstream remote (source dataset)
+    run_command(["git", "remote", "add", "upstream", "https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data"])
     
-    # Fetch from upstream
-    try:
-        subprocess.run(['git', 'fetch', 'upstream', 'main'], check=True)
-        print("Fetched upstream data successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error fetching upstream data: {e}")
-        sys.exit(1)
+    # Add target remote (your dataset)
+    target_url = f"https://hf.co/datasets/winterandchaiyun/yahoo-finance-data"
+    run_command(["git", "remote", "set-url", "origin", target_url])
     
-    # Merge upstream data (using theirs in case of conflicts)
-    try:
-        subprocess.run(['git', 'merge', 'upstream/main', '-m', 'Auto-sync from bwzheng2010', '-X', 'theirs'], check=True)
-        print("Merged upstream data successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error merging upstream data: {e}")
-        sys.exit(1)
-    
-    # Add all files (this will handle LFS files properly)
-    try:
-        subprocess.run(['git', 'add', '.'], check=True)
-        print("Added files to git index.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error adding files to git: {e}")
-        sys.exit(1)
-    
-    # Commit changes
-    try:
-        subprocess.run(['git', 'commit', '-m', 'Sync latest data from upstream'], check=True)
-        print("Committed changes.")
-    except subprocess.CalledProcessError:
-        # May not need to commit if no changes
-        print("No changes to commit or commit already exists.")
+    print("Remotes configured successfully.")
 
-def push_to_target_repo(hf_token):
-    """Push changes to target Hugging Face dataset"""
-    print("Pushing changes to target Hugging Face dataset...")
+def sync_data():
+    """Sync data from upstream to local repository"""
+    print("Fetching upstream data...")
+    run_command(["git", "fetch", "upstream", "main"])
     
-    target_url = f"https://winterandchaiyun:{hf_token}@huggingface.co/datasets/winterandchaiyun/yahoo-finance-data"
+    print("Merging upstream data...")
+    # Merge with strategy to prefer upstream changes in case of conflicts
+    run_command(["git", "merge", "upstream/main", "-m", "Auto-sync from bwzheng2010", "-X", "theirs"])
     
-    try:
-        # Add target remote
-        subprocess.run(['git', 'remote', 'add', 'target', target_url], check=True)
-        print("Added target remote successfully.")
-    except subprocess.CalledProcessError:
-        # Remote might already exist, try removing and re-adding
-        try:
-            subprocess.run(['git', 'remote', 'remove', 'target'], check=True)
-            subprocess.run(['git', 'remote', 'add', 'target', target_url], check=True)
-            print("Re-added target remote successfully.")
-        except subprocess.CalledProcessError as e:
-            print(f"Error managing target remote: {e}")
-            sys.exit(1)
+    print("Sync completed successfully.")
+
+def commit_and_push(hf_token):
+    """Commit changes and push to target repository"""
+    print("Configuring git user...")
+    run_command(["git", "config", "user.name", "winterandchaiyun"])
+    run_command(["git", "config", "user.email", "alex.zhou@example.com"])
     
-    # Push to target
-    try:
-        subprocess.run(['git', 'push', 'target', 'main', '--force'], check=True)
-        print("Pushed changes to target Hugging Face dataset successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error pushing to target: {e}")
-        sys.exit(1)
+    print("Adding files...")
+    run_command(["git", "add", "."])
+    
+    print("Checking for changes...")
+    status_output = run_command(["git", "status", "--porcelain"])
+    
+    if status_output.strip():
+        print("Changes detected, committing...")
+        run_command(["git", "commit", "-m", "Auto-sync from upstream HF dataset"])
+        
+        print("Pushing to target repository...")
+        run_command(["git", "push", "origin", "main", "--force"])
+        print("Successfully pushed to target repository.")
+    else:
+        print("No changes to commit.")
 
 def main():
-    """Main function to sync data from Hugging Face dataset"""
-    print("Starting Hugging Face data sync process...")
+    """Main function to orchestrate the sync process"""
+    print("Starting Hugging Face dataset sync...")
     
-    # Load HF token
-    hf_token = load_hf_token()
-    print("Loaded HF token from ../.env file.")
+    # Load HF token from .env
+    hf_token = load_env()
+    if not hf_token or hf_token == "your_actual_token_here":
+        print("Error: HF_TOKEN not found in .env file or still set to default value")
+        print("Please update the .env file with your actual Hugging Face token")
+        sys.exit(1)
+    
+    print("HF_TOKEN loaded successfully")
     
     # Initialize Git LFS
     initialize_git_lfs()
     
-    # Sync from upstream
-    sync_from_upstream(hf_token)
+    # Setup remotes
+    setup_remotes(hf_token)
     
-    # Push to target repo
-    push_to_target_repo(hf_token)
+    # Sync data from upstream
+    sync_data()
     
-    print("Hugging Face data sync completed successfully!")
+    # Commit and push changes
+    commit_and_push(hf_token)
+    
+    print("Hugging Face dataset sync completed successfully!")
 
 if __name__ == "__main__":
     main()
