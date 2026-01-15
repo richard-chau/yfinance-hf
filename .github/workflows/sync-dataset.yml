@@ -36,7 +36,7 @@ jobs:
         git fetch upstream main
 
         # 4. Merge data, preferring upstream in case of conflicts (-X theirs)
-        git merge upstream/main -m "Auto-sync from bwzheng2010 [skip ci]" -X theirs
+        git merge upstream/main -m "Auto-sync from bwzheng2010 [skip ci]" -X theirs --allow-unrelated-histories
 
         # 5. Push merged data (with LFS files) to your own HF page
         git push target main --force

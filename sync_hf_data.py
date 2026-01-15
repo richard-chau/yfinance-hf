@@ -59,7 +59,8 @@ def sync_data():
     
     print("Merging upstream data...")
     # Merge with strategy to prefer upstream changes in case of conflicts
-    run_command(["git", "merge", "upstream/main", "-m", "Auto-sync from bwzheng2010", "-X", "theirs"])
+    # Use --allow-unrelated-histories to handle different commit histories
+    run_command(["git", "merge", "upstream/main", "-m", "Auto-sync from bwzheng2010", "-X", "theirs", "--allow-unrelated-histories"])
     
     print("Sync completed successfully.")
 

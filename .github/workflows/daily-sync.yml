@@ -35,7 +35,7 @@ jobs:
           git fetch upstream main
 
           # 4. 合并数据，如果有冲突以原作者的为准 (-X theirs)
-          git merge upstream/main -m "Auto-sync from bwzheng2010 [skip ci]" -X theirs
+          git merge upstream/main -m "Auto-sync from bwzheng2010 [skip ci]" -X theirs --allow-unrelated-histories
 
           # 5. 把合并后的完整数据（含 LFS 大文件）推送到你自己的 HF 页面
           git push target main
