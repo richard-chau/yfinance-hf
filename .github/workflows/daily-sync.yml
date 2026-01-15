@@ -11,12 +11,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        fetch-depth: 0  # Fetch all history for proper merge
-
     - name: Set up Git
       run: |
         git config --global user.name 'github-actions[bot]'
@@ -31,24 +25,31 @@ jobs:
     - name: Initialize Git LFS
       run: git lfs install
 
-    - name: Fetch from upstream
+    - name: Clone upstream repository
       run: |
         if [ ! -z "${{ secrets.HF_TOKEN }}" ]; then
-          git remote add upstream https://${{ secrets.HF_TOKEN }}@huggingface.co/datasets/bwzheng2010/yahoo-finance-data
+          git clone https://${{ secrets.HF_TOKEN }}@huggingface.co/datasets/bwzheng2010/yahoo-finance-data upstream-repo
         else
-          git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data
+          git clone https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data upstream-repo
         fi
-        git fetch upstream
 
-    - name: Reset to upstream main
-      run: |
-        git checkout main
-        git reset --hard upstream/main
+    - name: Checkout target repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        path: target-repo
 
-    - name: Push changes to GitHub
+    - name: Copy files from upstream to target
       run: |
-        git push --force-with-lease origin main
+        rsync -av --delete ./upstream-repo/ ./target-repo/ --exclude='.git/'
 
-    - name: Sync LFS objects
+    - name: Commit and push changes
       run: |
-        git lfs push --all origin
+        cd target-repo
+        git add .
+        if ! git diff --cached --quiet; then
+          git commit -m "Sync with upstream Hugging Face dataset [skip ci]"
+          git push origin main
+        else
+          echo "No changes to commit"
+        fi
