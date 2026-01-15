@@ -43,14 +43,13 @@ def initialize_git_lfs():
 def setup_remotes(hf_token):
     """Setup upstream and target remotes"""
     print("Setting up remotes...")
-    
+
     # Add upstream remote (source dataset)
     run_command(["git", "remote", "add", "upstream", "https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data"])
-    
-    # Add target remote (your dataset)
-    target_url = f"https://hf.co/datasets/winterandchaiyun/yahoo-finance-data"
-    run_command(["git", "remote", "set-url", "origin", target_url])
-    
+
+    # Configure git credentials for Hugging Face
+    run_command(["git", "config", "credential.helper", "store"])
+
     print("Remotes configured successfully.")
 
 def sync_data():
@@ -67,8 +66,8 @@ def sync_data():
 def commit_and_push(hf_token):
     """Commit changes and push to target repository"""
     print("Configuring git user...")
-    run_command(["git", "config", "user.name", "winterandchaiyun"])
-    run_command(["git", "config", "user.email", "alex.zhou@example.com"])
+    run_command(["git", "config", "user.name", "richard-chau"])
+    run_command(["git", "config", "user.email", "richard.chau@example.com"])
     
     print("Adding files...")
     run_command(["git", "add", "."])

@@ -19,10 +19,15 @@ This repository contains scripts and workflows to automatically sync a Hugging F
    - Get your token from [Hugging Face Settings](https://huggingface.co/settings/tokens)
    - Replace `your_actual_token_here` in `.env` with your actual token
 
-4. Run the sync script to clone the dataset and set up upstream remote:
-   ```bash
-   python sync_hf_dataset.py
-   ```
+4. Create your own Hugging Face dataset repository:
+   - Go to [Hugging Face Hub](https://huggingface.co/datasets)
+   - Click "New Dataset" 
+   - Choose a name like `your-username/yahoo-finance-data`
+   - Make sure to enable Git-based operations
+
+5. Update the GitHub Actions workflow file `.github/workflows/sync_hf_data.yml`:
+   - Change the target repository URL to your own dataset repository
+   - The workflow currently assumes `winterandchaiyun/yahoo-finance-data` as target
 
 ## GitHub Secrets Required
 
@@ -43,9 +48,9 @@ For the GitHub Actions workflow to work, you need to set up the following secret
 
 ## GitHub Actions Workflow
 
-The workflow in `.github/workflows/daily-sync.yml` will:
+The workflow in `.github/workflows/sync_hf_data.yml` will:
 - Run daily at midnight UTC
-- Fetch the latest data from the upstream dataset
+- Fetch the latest data from the upstream dataset (bwzheng2010/yahoo-finance-data)
 - Merge changes (preferring upstream in case of conflicts)
 - Push updates to your repository
 
@@ -55,7 +60,7 @@ You can also manually trigger the workflow from the Actions tab in your GitHub r
 
 To manually sync the dataset, run:
 ```bash
-python sync_hf_dataset.py
+python sync_hf_data.py
 ```
 
 ## Notes
@@ -63,3 +68,4 @@ python sync_hf_dataset.py
 - The workflow uses `git lfs` to handle large files properly
 - Conflicts are resolved by preferring upstream changes (`-X theirs`)
 - The `[skip ci]` tag in commit messages prevents triggering additional CI runs
+- Make sure your Hugging Face dataset repository exists before running the workflow
