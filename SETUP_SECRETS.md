@@ -73,7 +73,7 @@ python3 setup_upstream.py
 1. **GitHub Actions 每天自动运行**（UTC 0:00，北京时间早上 8:00）
 2. **从 upstream 拉取数据**：从 `bwzheng2010/yahoo-finance-data` 拉取最新数据
 3. **推送到你的 HF 仓库**：推送到 `winterandchaiyun/yahoo-finance-data`
-4. **GitHub 仓库只存储代码**，不存储数据集本身
+4. **GitHub 仓库只存储代码**，不存储数据集本身（数据集存储在 Hugging Face）
 
 ## 注意事项
 
@@ -93,7 +93,7 @@ python3 setup_upstream.py
 1. 检查 HF_TOKEN 是否正确
 2. 确保令牌有 `write` 权限
 3. 确保你的 Hugging Face 用户名是 `winterandchaiyun`
-4. 确保 Hugging Face 仓库已创建
+4. 确保 Hugging Face 仓库已创建：https://huggingface.co/datasets/winterandchaiyun/yahoo-finance-data
 
 ### 问题：LFS 文件上传失败
 **解决方案：**

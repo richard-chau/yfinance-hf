@@ -17,17 +17,8 @@ use token in ../.env
 https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data
 
 
-這份 Workflow 寫得非常有邏輯，特別是使用了 `rsync` 來處理文件同步，這比單純的 `git merge` 更可控（尤其是在你只想單向覆蓋數據時）。
-
-不過，針對 **Hugging Face** 的特殊機制，這份代碼有幾個隱藏的「坑」需要優化，否則在處理大文件時會報錯或同步失敗：
-
-### 1. 核心風險：`rsync` 會弄壞 Git LFS 指針
-
-**問題：** 當你用 `rsync` 從 `upstream-repo` 拷貝到 `target-repo` 時，你拷貝的是**已經被 Git LFS 替換過的實體文件**。
-
-* 如果你的 `target-repo` 也是一個 Hugging Face 倉庫，當你執行 `git add .` 時，Git 會嘗試重新把這些幾 GB 的大文件再次 LFS 化，這會導致 CI 內存溢出或上傳速度極慢。
-* **更好的做法：** 直接在同一個 Git 倉庫中操作兩個 `remote`，讓 Git 在指針層面完成同步。
-
+HF_token=>../.env
+already registered to github https://github.com/richard-chau/yfinance-hf
 
 yaml is here:
 
