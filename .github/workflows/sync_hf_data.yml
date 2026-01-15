@@ -25,96 +25,18 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          set -e
+          # 1. 添加原作者地址 (Upstream)
+          git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data || echo "Upstream remote already exists"
           
-          if [ -z "$HF_TOKEN" ]; then
-            echo "错误: HF_TOKEN 未设置，请到 GitHub Secrets 中设置"
-            exit 1
-          fi
+          # 2. 添加你自己的地址 (Target)
+          git remote add target https://winterandchaiyun:$HF_TOKEN@huggingface.co/datasets/winterandchaiyun/yahoo-finance-data || \
+          git remote set-url target https://winterandchaiyun:$HF_TOKEN@huggingface.co/datasets/winterandchaiyun/yahoo-finance-data
           
-          # 创建临时目录用于同步数据
-          TEMP_DIR=$(mktemp -d)
-          echo "使用临时目录: $TEMP_DIR"
+          # 3. 拉取原作者最新的数据到 GitHub 临时空间
+          git fetch upstream main
           
-          # 1. 克隆目标仓库（检查当前状态）
-          echo "克隆目标仓库..."
-          git clone --depth 1 https://winterandchaiyun:$HF_TOKEN@huggingface.co/datasets/winterandchaiyun/yahoo-finance-data "$TEMP_DIR/target" || {
-            echo "目标仓库不存在，将创建新仓库"
-            mkdir -p "$TEMP_DIR/target"
-          }
-          cd "$TEMP_DIR/target"
-          git lfs install || true
+          # 4. 合并数据，如果有冲突以原作者的为准 (-X theirs)
+          git merge upstream/main -m "Auto-sync from bwzheng2010 [skip ci]" -X theirs --allow-unrelated-histories || true
           
-          # 2. 获取目标仓库的当前 commit（如果存在）
-          TARGET_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "")
-          echo "目标仓库当前 commit: ${TARGET_COMMIT:-空仓库}"
-          
-          # 3. 克隆 upstream 数据集
-          echo "从 upstream 获取最新数据..."
-          cd "$TEMP_DIR"
-          git clone --depth 1 https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data "$TEMP_DIR/upstream"
-          cd upstream
-          git lfs install
-          git lfs pull || echo "LFS pull 警告，继续..."
-          
-          # 4. 检查 upstream 是否有更新
-          UPSTREAM_COMMIT=$(git rev-parse HEAD)
-          echo "Upstream 当前 commit: $UPSTREAM_COMMIT"
-          
-          if [ -n "$TARGET_COMMIT" ] && [ "$TARGET_COMMIT" = "$UPSTREAM_COMMIT" ]; then
-            echo "✓ Upstream 没有更新，跳过同步"
-            cd /
-            rm -rf "$TEMP_DIR"
-            exit 0
-          fi
-          
-          echo "检测到更新，开始同步..."
-          
-          # 5. 准备目标仓库
-          cd "$TEMP_DIR/target"
-          if [ ! -d .git ]; then
-            git init
-            git lfs install
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email 'github-actions[bot]@users.noreply.github.com'
-          
-          # 6. 清理现有文件（只保留数据文件）
-          echo "清理现有文件..."
-          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} \;
-          
-          # 7. 复制数据文件
-          echo "复制数据文件..."
-          # 复制 .gitattributes
-          if [ -f ../upstream/.gitattributes ]; then
-            cp ../upstream/.gitattributes .
-          else
-            echo "*.parquet filter=lfs diff=lfs merge=lfs -text" > .gitattributes
-          fi
-          
-          # 复制 .parquet 文件
-          find ../upstream -name "*.parquet" -exec cp {} . \;
-          
-          # 复制其他必要文件
-          [ -f ../upstream/README.md ] && cp ../upstream/README.md . || true
-          [ -f ../upstream/spec.json ] && cp ../upstream/spec.json . || true
-          [ -f ../upstream/dataset_infos.json ] && cp ../upstream/dataset_infos.json . || true
-          [ -f ../upstream/dataset_info.json ] && cp ../upstream/dataset_info.json . || true
-          
-          # 8. 提交并推送
-          git add -A
-          if ! git diff --staged --quiet || [ -z "$TARGET_COMMIT" ]; then
-            git commit -m "Auto-sync data from bwzheng2010/yahoo-finance-data [skip ci]"
-            echo "推送到 Hugging Face..."
-            git remote remove origin 2>/dev/null || true
-            git remote add origin https://winterandchaiyun:$HF_TOKEN@huggingface.co/datasets/winterandchaiyun/yahoo-finance-data
-            git lfs push origin main --all || echo "LFS push 警告，继续..."
-            git push origin main --force
-            echo "✓ 数据同步完成！"
-          else
-            echo "没有新数据需要同步"
-          fi
-          
-          # 清理临时目录
-          cd /
-          rm -rf "$TEMP_DIR"
+          # 5. 把合并后的完整数据（含 LFS 大文件）推送到你自己的 HF 页面
+          git push target main --force
