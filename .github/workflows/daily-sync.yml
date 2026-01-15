@@ -2,11 +2,8 @@ name: Data Sync to My HF
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Runs daily at midnight UTC
-  workflow_dispatch:      # Allow manual trigger
-
-permissions:
-  contents: write  # Grant write permission to commit and push changes
+    - cron: '0 0 * * *' # 每天北京时间早上 8 点左右运行
+  workflow_dispatch:      # 允许你点击按钮手动运行
 
 jobs:
   sync-job:
@@ -15,43 +12,30 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          lfs: true # Enable LFS support
+          lfs: true # 开启 LFS 支持
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Global Config
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git config --global user.name 'winterandchaiyun'
+          git config --global user.email 'alex.zhou@example.com'
           git lfs install
 
       - name: Sync Data
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # 1. Clone the upstream repository to a temporary directory
-          git clone https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data /tmp/upstream-repo
-
-          # 2. Copy all files from upstream to current directory, excluding .git
-          rsync -av --delete /tmp/upstream-repo/ ./ \
-            --exclude='.git/' \
-            --exclude='.github/' \
-            --exclude='README.md' \
-            --exclude='task.md' \
-            --exclude='*.py' \
-            --exclude='*.sh' \
-            --exclude='requirements.txt'
-
-          # 3. Remove the temporary directory
-          rm -rf /tmp/upstream-repo
-
-          # 4. Check if there are changes to commit
-          if [[ -n $(git status --porcelain) ]]; then
-            git add .
-            git commit -m "Auto-sync from upstream [skip ci]"
-
-            # 5. Push updates to the current repository (GitHub)
-            git push origin main
-          else
-            echo "No changes to commit"
-          fi
+          # 1. 添加原作者地址 (Upstream)
+          git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data
+          
+          # 2. 添加你自己的地址 (Target)
+          git remote add target https://winterandchaiyun:$HF_TOKEN@huggingface.co/datasets/winterandchaiyun/yahoo-finance-data
+          
+          # 3. 拉取原作者最新的数据到 GitHub 临时空间
+          git fetch upstream main
+          
+          # 4. 合并数据，如果有冲突以原作者的为准 (-X theirs)
+          git merge upstream/main -m "Auto-sync from bwzheng2010 [skip ci]" -X theirs
+          
+          # 5. 把合并后的完整数据（含 LFS 大文件）推送到你自己的 HF 页面
+          git push target main
