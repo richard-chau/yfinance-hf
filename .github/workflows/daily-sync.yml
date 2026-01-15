@@ -1,72 +1,38 @@
-name: Daily Sync from Hugging Face Dataset
+name: Data Sync to My HF
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Runs daily at midnight UTC
-  workflow_dispatch:      # Allows manual trigger
+    - cron: '0 0 * * *' # Runs daily at midnight UTC
+  workflow_dispatch:      # Allow manual trigger
 
 jobs:
-  sync-from-upstream:
+  sync-job:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Set up Git Configuration
-      run: |
-        git config --global user.name 'github-actions[bot]'
-        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        git lfs install
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          lfs: true # Enable LFS support
+          fetch-depth: 0
 
-    - name: Set up Hugging Face credentials
-      env:
-        HF_TOKEN: ${{ secrets.HF_TOKEN }}
-      run: |
-        if [ ! -z "$HF_TOKEN" ]; then
-          git config --global credential.helper store
-          echo "https://hf_$HF_TOKEN@huggingface.co" > ~/.git-credentials
-        fi
-
-    - name: Clone upstream repository
-      run: |
-        # Clone the upstream Hugging Face dataset
-        git clone https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data upstream-repo
-        cd upstream-repo
-        git lfs pull
-
-    - name: Checkout target repository
-      uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        path: target-repo
-
-    - name: Copy files from upstream to target
-      run: |
-        # Copy data files from upstream to target, excluding .git directories and GitHub-specific files
-        # This preserves our workflow files and other GitHub-specific configurations
-        rsync -av --delete ./upstream-repo/ ./target-repo/ \
-          --exclude='.git/' \
-          --exclude='.github/' \
-          --exclude='README.md' \
-          --exclude='task.md' \
-          --exclude='*.py' \
-          --exclude='*.sh' \
-          --exclude='requirements.txt'
-
-    - name: Commit and push changes
-      working-directory: ./target-repo
-      run: |
-        git add .
-
-        # Check for changes
-        if ! git diff --cached --quiet; then
+      - name: Global Config
+        run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git lfs install
 
-          git commit -m "Sync with upstream Hugging Face dataset [skip ci]"
+      - name: Sync Data
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # 1. Add upstream repository (the source dataset)
+          git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data
 
-          # Set up credentials for pushing
-          git remote set-url origin https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          # 2. Fetch the latest data from upstream
+          git fetch upstream main
 
+          # 3. Merge data, preferring upstream in case of conflicts (-X theirs)
+          git merge upstream/main -m "Auto-sync from upstream [skip ci]" -X theirs
+
+          # 4. Push updates to the current repository (GitHub)
           git push origin main
-        else
-          echo "No changes to commit"
-        fi
