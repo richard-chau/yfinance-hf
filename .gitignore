@@ -12,6 +12,3 @@ split/*
 # Environment variables
 .env
 *.env
-
-# Git LFS
-.gitattributes
