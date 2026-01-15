@@ -2,63 +2,44 @@ name: Daily Sync from Hugging Face Dataset
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Runs daily at midnight UTC
+    - cron: '0 0 * * *'  # Runs daily at midnight UTC (which is 8 AM Beijing time)
   workflow_dispatch:      # Allows manual trigger
 
 jobs:
-  sync-from-upstream:
+  sync-job:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Target Repo
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        lfs: true # Enable LFS support to handle large files
-        token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          lfs: true # Enable LFS support
+          fetch-depth: 0
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+      - name: Global Config
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git lfs install
 
-    - name: Install dependencies
-      run: |
-        pip install python-dotenv
+      - name: Sync Data
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # 1. Add upstream repository (source)
+          git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data
 
-    - name: Set up Git Configuration
-      run: |
-        git config --global user.name 'github-actions[bot]'
-        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        git lfs install
+          # 2. Add your own repository as target
+          git remote add target https://${{ github.actor }}:${{ secrets.HF_TOKEN }}@huggingface.co/datasets/${{ github.repository_owner }}/yahoo-finance-data
 
-    - name: Sync with Upstream
-      env:
-        HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        HF_USERNAME: ${{ secrets.HF_USERNAME }}
-      run: |
-        # Create a temporary .env file with the HF credentials
-        echo "HF_TOKEN=${HF_TOKEN}" > .env
-        echo "HF_USERNAME=${HF_USERNAME:-${{ github.repository_owner }}}" >> .env
+          # 3. Fetch latest data from upstream
+          git fetch upstream main
 
-        # Run the sync script
-        python sync_hf_data.py
+          # 4. Merge data, preferring upstream in case of conflicts
+          git merge upstream/main -m "Auto-sync from bwzheng2010 [skip ci]" -X theirs
 
-    - name: Commit and push changes to GitHub
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        # Configure git to use GitHub token for authentication
-        git config --global user.name 'github-actions[bot]'
-        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          # 5. Push merged data to your GitHub repository
+          git push origin main
 
-        # Check if there are any changes to commit
-        git add .
-        if ! git diff --cached --quiet; then
-          echo "Changes detected, committing and pushing..."
-          git commit -m "Automated sync from upstream Hugging Face dataset [skip ci]"
-          git pull --rebase  # Pull any changes that might have happened in the meantime
-          git push
-        else
-          echo "No changes to commit"
-        fi
+          # 6. Push to your Hugging Face dataset (optional - only if you have it created)
+          # Uncomment the next line if you want to push to your Hugging Face dataset
+          # git push target main --force
