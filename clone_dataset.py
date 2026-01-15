@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Script to clone a Hugging Face dataset and set up upstream tracking
+Script to clone a Hugging Face dataset, initialize git lfs,
+and set the original dataset as upstream for synchronization.
 """
 
 import os
@@ -9,85 +10,84 @@ import subprocess
 from pathlib import Path
 from dotenv import load_dotenv
 
-def load_hf_token():
-    """Load HF token from .env file"""
-    load_dotenv('../.env')
-    hf_token = os.getenv('HF_TOKEN')
+def run_command(cmd, cwd=None, check=True):
+    """Run a shell command and return the result."""
+    print(f"Running: {' '.join(cmd) if isinstance(cmd, list) else cmd}")
+    result = subprocess.run(
+        cmd,
+        shell=isinstance(cmd, str),
+        cwd=cwd,
+        capture_output=True,
+        text=True
+    )
     
-    if not hf_token:
-        print("Error: HF_TOKEN not found in ../.env file")
-        print("Please add your Hugging Face token to the .env file")
-        sys.exit(1)
+    if check and result.returncode != 0:
+        print(f"Error running command: {cmd}")
+        print(f"stdout: {result.stdout}")
+        print(f"stderr: {result.stderr}")
+        sys.exit(result.returncode)
         
-    return hf_token
-
-def run_command(cmd, cwd=None):
-    """Run a shell command and handle errors"""
-    try:
-        result = subprocess.run(
-            cmd, 
-            shell=True, 
-            check=True, 
-            cwd=cwd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        print(f"Command '{cmd}' executed successfully")
-        if result.stdout.strip():
-            print(f"Output: {result.stdout.strip()}")
-        return result
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing command '{cmd}': {e.stderr}")
-        sys.exit(1)
+    return result
 
 def main():
-    # Load HF token
-    hf_token = load_hf_token()
+    # Load environment variables from .env file
+    load_dotenv()
     
-    # Define dataset info
+    # Get HF token from environment
+    hf_token = os.getenv('HF_TOKEN')
+    if not hf_token or hf_token == 'your_actual_token_here':
+        print("Error: HF_TOKEN not found in .env file or still set to default value.")
+        print("Please update the .env file with your actual Hugging Face token.")
+        print("Get your token from https://huggingface.co/settings/tokens")
+        sys.exit(1)
+    
+    # Dataset information
     dataset_name = "bwzheng2010/yahoo-finance-data"
     dataset_url = f"https://huggingface.co/datasets/{dataset_name}"
-    repo_url_with_token = f"https://{hf_token}@huggingface.co/datasets/{dataset_name}.git"
-    
-    # Create datasets directory if it doesn't exist
-    datasets_dir = Path("datasets")
-    datasets_dir.mkdir(exist_ok=True)
+    clone_url = f"https://{hf_token}@huggingface.co/datasets/{dataset_name}"
     
     # Clone the dataset
-    dataset_dir = datasets_dir / dataset_name.split('/')[-1]
+    print(f"Cloning dataset from: {dataset_url}")
+    run_command(['git', 'clone', clone_url])
     
-    if dataset_dir.exists():
-        print(f"Dataset directory {dataset_dir} already exists, pulling latest changes...")
-        run_command("git pull origin main", cwd=dataset_dir)
-    else:
-        print(f"Cloning dataset from {dataset_url}...")
-        run_command(f"git clone {repo_url_with_token} {dataset_dir}")
+    # Change to the cloned directory
+    dataset_dir = dataset_name.split('/')[-1]  # Get the last part of the dataset name
+    dataset_path = Path(dataset_dir)
     
-    # Initialize git lfs
-    print("Initializing Git LFS...")
-    run_command("git lfs install", cwd=dataset_dir)
+    if not dataset_path.exists():
+        # If the directory name is different, try to find it
+        dirs = [d for d in Path('.').iterdir() if d.is_dir()]
+        if len(dirs) == 1:
+            dataset_path = dirs[0]
+        else:
+            print(f"Could not find the cloned dataset directory: {dataset_dir}")
+            sys.exit(1)
     
-    # Pull LFS files
-    print("Pulling LFS files...")
-    run_command("git lfs pull", cwd=dataset_dir)
+    print(f"Changing to directory: {dataset_path}")
     
-    # Set the original Hugging Face repo as upstream
-    print("Setting upstream to original Hugging Face dataset...")
-    run_command(f"git remote add upstream {dataset_url.replace('https://', 'https://huggingface.co/datasets/')}.git || git remote set-url upstream {dataset_url.replace('https://', 'https://huggingface.co/datasets/')}.git", cwd=dataset_dir)
+    # Initialize git lfs in the cloned repository
+    print("Initializing git lfs...")
+    run_command(['git', 'lfs', 'install'], cwd=dataset_path)
     
-    # Show remotes
-    print("Current remotes:")
-    run_command("git remote -v", cwd=dataset_dir)
+    # Set the original dataset as upstream
+    print("Setting original dataset as upstream...")
+    run_command(['git', 'remote', 'add', 'upstream', dataset_url], cwd=dataset_path)
     
-    print(f"\nDataset cloned successfully to {dataset_dir}")
-    print("Upstream remote added for future updates")
+    # Fetch from upstream
+    print("Fetching from upstream...")
+    run_command(['git', 'fetch', 'upstream'], cwd=dataset_path)
     
-    # Instructions for user
-    print("\nTo update from upstream in the future, run:")
-    print(f"cd {dataset_dir}")
-    print("git fetch upstream")
-    print("git merge upstream/main -X theirs")
+    print(f"\nDataset cloned successfully to '{dataset_path}'")
+    print(f"Upstream remote added as 'upstream': {dataset_url}")
+    print("You can now synchronize with upstream using:")
+    print(f"  cd {dataset_path}")
+    print("  git fetch upstream")
+    print("  git merge upstream/main")  # or whatever the default branch is
+    
+    # Show current remotes
+    print("\nCurrent remotes:")
+    result = run_command(['git', 'remote', '-v'], cwd=dataset_path, check=False)
+    print(result.stdout)
 
 if __name__ == "__main__":
     main()
