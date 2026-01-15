@@ -12,3 +12,4 @@ split/*
 # Environment variables
 .env
 *.env
+!.env.example
