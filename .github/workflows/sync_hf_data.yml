@@ -17,8 +17,8 @@ jobs:
 
       - name: Global Config
         run: |
-          git config --global user.name 'winterandchaiyun'
-          git config --global user.email 'alex.zhou@example.com'
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git lfs install
 
       - name: Sync Data
