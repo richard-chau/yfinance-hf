@@ -21,7 +21,7 @@
 
 #### 如何在 GitHub 中设置：
 
-1. 进入你的 GitHub 仓库页面
+1. 进入你的 GitHub 仓库页面：https://github.com/richard-chau/yfinance-hf
 2. 点击 **Settings** → **Secrets and variables** → **Actions**
 3. 点击 **New repository secret**
 4. 名称输入：`HF_TOKEN`
@@ -56,11 +56,24 @@
 HF_TOKEN=your_huggingface_token_here
 ```
 
-然后运行设置脚本：
+然后运行同步脚本：
+
+```bash
+python3 sync_to_hf.py
+```
+
+或者运行设置脚本：
 
 ```bash
 python3 setup_upstream.py
 ```
+
+## 工作流程说明
+
+1. **GitHub Actions 每天自动运行**（UTC 0:00，北京时间早上 8:00）
+2. **从 upstream 拉取数据**：从 `bwzheng2010/yahoo-finance-data` 拉取最新数据
+3. **推送到你的 HF 仓库**：推送到 `winterandchaiyun/yahoo-finance-data`
+4. **GitHub 仓库只存储代码**，不存储数据集本身
 
 ## 注意事项
 
@@ -68,6 +81,7 @@ python3 setup_upstream.py
 - ⚠️ **不要**在代码中硬编码令牌
 - ✅ 使用 GitHub Secrets 存储敏感信息
 - ✅ 令牌过期后需要重新生成并更新
+- ✅ GitHub 仓库只存储代码，数据集存储在 Hugging Face
 
 ## 故障排除
 
@@ -79,13 +93,22 @@ python3 setup_upstream.py
 1. 检查 HF_TOKEN 是否正确
 2. 确保令牌有 `write` 权限
 3. 确保你的 Hugging Face 用户名是 `winterandchaiyun`
+4. 确保 Hugging Face 仓库已创建
 
 ### 问题：LFS 文件上传失败
 **解决方案：**
 - 确保工作流中启用了 `lfs: true`
 - 检查 Git LFS 是否正确安装：`git lfs install`
+- 确保 LFS 文件已正确拉取：`git lfs pull upstream main`
+
+### 问题：合并冲突
+**解决方案：**
+- 工作流使用 `-X theirs` 策略，自动以 upstream 为准
+- 如果仍有问题，可以手动运行 `git reset --hard upstream/main`
 
 ## 相关链接
 
 - [Hugging Face 令牌文档](https://huggingface.co/docs/hub/security-tokens)
 - [GitHub Actions Secrets 文档](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
+- [上游数据集](https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data)
+- [你的数据集](https://huggingface.co/datasets/winterandchaiyun/yahoo-finance-data)

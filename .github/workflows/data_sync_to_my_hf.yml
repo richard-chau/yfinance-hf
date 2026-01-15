@@ -2,7 +2,7 @@ name: Data Sync to My HF
 
 on:
   schedule:
-    - cron: '0 0 * * *' # 每天北京时间早上 8 点左右运行
+    - cron: '0 0 * * *' # 每天 UTC 0:00 运行（北京时间早上 8 点左右）
   workflow_dispatch:      # 允许你点击按钮手动运行
 
 jobs:
@@ -15,46 +15,54 @@ jobs:
           lfs: true # 开启 LFS 支持
           fetch-depth: 0
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-
-      - name: Install dependencies
+      - name: Setup Git LFS
         run: |
-          pip install python-dotenv
+          git lfs install
 
       - name: Global Config
         run: |
-          git config --global user.name 'richard-chau'
-          git config --global user.email 'richard.chau@example.com'
-          git lfs install
+          git config --global user.name 'winterandchaiyun'
+          git config --global user.email 'winterandchaiyun@example.com'
 
-      - name: Sync Data
+      - name: Sync Data from Upstream
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
+          set -e
+          
           # 1. 添加原作者地址 (Upstream)
+          echo "添加 upstream remote..."
+          git remote remove upstream 2>/dev/null || true
           git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data
-
-          # 2. 添加你自己的地址 (Target) - only if HF_TOKEN is provided
-          if [ -n "$HF_TOKEN" ]; then
-            git remote add target https://richard-chau:$HF_TOKEN@huggingface.co/datasets/richard-chau/yahoo-finance-data
+          
+          # 2. 检查 HF_TOKEN
+          if [ -z "$HF_TOKEN" ]; then
+            echo "错误: HF_TOKEN 未设置"
+            echo "请在 GitHub Secrets 中设置 HF_TOKEN"
+            exit 1
           fi
-
-          # 3. 拉取原作者最新的数据到 GitHub 临时空间
+          
+          # 3. 添加你自己的地址 (Target)
+          echo "添加 target remote..."
+          git remote remove target 2>/dev/null || true
+          git remote add target https://winterandchaiyun:$HF_TOKEN@huggingface.co/datasets/winterandchaiyun/yahoo-finance-data
+          
+          # 4. 拉取原作者最新的数据（包括 LFS 文件）
+          echo "从 upstream 拉取数据..."
           git fetch upstream main
-
-          # 4. 合并数据，如果有冲突以原作者的为准 (-X theirs)
-          git merge upstream/main -m "Auto-sync from bwzheng2010" -X theirs --allow-unrelated-histories
-
-          # 5. 如果提供了 HF_TOKEN，则尝试推送到 Hugging Face
-          if [ -n "$HF_TOKEN" ]; then
-            echo "Attempting to push to Hugging Face..."
-            git push target main --force || echo "Failed to push to Hugging Face (may not exist yet)"
-          else
-            echo "HF_TOKEN not provided, skipping Hugging Face push"
-          fi
-
-          # Note: We don't push back to GitHub as the original data comes from HuggingFace
-          # The GitHub repo contains code, not the dataset itself
+          git lfs fetch upstream main
+          
+          # 5. 合并数据，如果有冲突以原作者的为准 (-X theirs)
+          echo "合并数据..."
+          git merge upstream/main -m "Auto-sync from bwzheng2010" -X theirs --allow-unrelated-histories || true
+          
+          # 6. 拉取所有 LFS 文件
+          echo "拉取 LFS 文件..."
+          git lfs pull upstream main || true
+          
+          # 7. 把合并后的完整数据（含 LFS 大文件）推送到你自己的 HF 页面
+          echo "推送到 Hugging Face..."
+          git lfs push target main --all || echo "LFS push 失败，继续尝试普通 push"
+          git push target main --force
+          
+          echo "✓ 同步完成！"
