@@ -25,29 +25,74 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # 1. 添加原作者地址 (Upstream)
-          git remote add upstream https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data || echo "Upstream remote already exists"
+          set -e
           
-          # 2. 添加你自己的地址 (Target)
           if [ -z "$HF_TOKEN" ]; then
             echo "错误: HF_TOKEN 未设置，请到 GitHub Secrets 中设置"
             exit 1
           fi
           
-          git remote add target https://winterandchaiyun:$HF_TOKEN@huggingface.co/datasets/winterandchaiyun/yahoo-finance-data || \
-          git remote set-url target https://winterandchaiyun:$HF_TOKEN@huggingface.co/datasets/winterandchaiyun/yahoo-finance-data
+          # 创建临时目录用于同步数据
+          TEMP_DIR=$(mktemp -d)
+          echo "使用临时目录: $TEMP_DIR"
           
-          # 3. 拉取原作者最新的数据到 GitHub 临时空间
-          echo "从 upstream 拉取最新数据..."
-          git fetch upstream main
+          # 1. 克隆 upstream 数据集到临时目录
+          echo "从 upstream 克隆数据集..."
+          git clone --depth 1 https://huggingface.co/datasets/bwzheng2010/yahoo-finance-data "$TEMP_DIR/upstream"
+          cd "$TEMP_DIR/upstream"
+          git lfs install
+          git lfs pull
           
-          # 4. 合并数据，如果有冲突以原作者的为准 (-X theirs)
-          echo "合并数据..."
-          git merge upstream/main -m "Auto-sync from bwzheng2010 [skip ci]" -X theirs || \
-          git merge upstream/main -m "Auto-sync from bwzheng2010 [skip ci]" -X theirs --allow-unrelated-histories
+          # 2. 初始化目标仓库（如果不存在则创建）
+          cd "$TEMP_DIR"
+          git init target-repo
+          cd target-repo
+          git lfs install
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
           
-          # 5. 把合并后的完整数据（含 LFS 大文件）推送到你自己的 HF 页面
-          echo "推送到 Hugging Face..."
-          git push target main --force
+          # 3. 先复制 .gitattributes（必须在复制文件之前设置 LFS 规则）
+          echo "设置 Git LFS 配置..."
+          if [ -f ../upstream/.gitattributes ]; then
+            cp ../upstream/.gitattributes .
+            git add .gitattributes
+            git commit -m "Add .gitattributes for LFS" || true
+          else
+            # 如果没有 .gitattributes，创建一个基本的
+            echo "*.parquet filter=lfs diff=lfs merge=lfs -text" > .gitattributes
+            git add .gitattributes
+            git commit -m "Add .gitattributes for LFS" || true
+          fi
           
-          echo "✓ 数据同步完成！"
+          # 4. 添加 target remote
+          git remote add target https://winterandchaiyun:$HF_TOKEN@huggingface.co/datasets/winterandchaiyun/yahoo-finance-data
+          
+          # 5. 尝试拉取现有内容（如果仓库已存在）
+          git fetch target main || echo "目标仓库为空或不存在，将创建新仓库"
+          git checkout -b main || git checkout main || true
+          
+          # 6. 只复制数据文件（不包含代码、workflow 等）
+          echo "复制数据文件..."
+          # 复制所有 .parquet 文件（LFS 会自动处理）
+          find ../upstream -name "*.parquet" -exec cp {} . \;
+          # 复制 README.md（如果存在）
+          [ -f ../upstream/README.md ] && cp ../upstream/README.md . || true
+          # 复制 spec.json（如果存在）
+          [ -f ../upstream/spec.json ] && cp ../upstream/spec.json . || true
+          # 复制其他可能的数据相关文件（排除 Python 文件）
+          find ../upstream -maxdepth 1 -type f \( -name "*.json" -o -name "*.yaml" -o -name "*.yml" \) ! -name "*.py" -exec cp {} . \; 2>/dev/null || true
+          
+          # 6. 添加并提交数据文件
+          git add -A
+          if ! git diff --staged --quiet; then
+            git commit -m "Auto-sync data from bwzheng2010/yahoo-finance-data [skip ci]"
+            echo "推送到 Hugging Face..."
+            git push target main --force
+            echo "✓ 数据同步完成！"
+          else
+            echo "没有新数据需要同步"
+          fi
+          
+          # 清理临时目录
+          cd /
+          rm -rf "$TEMP_DIR"
