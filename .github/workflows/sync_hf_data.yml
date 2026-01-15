@@ -58,12 +58,11 @@ jobs:
     - name: Push to Hugging Face Hub
       env:
         HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        HF_USERNAME: ${{ secrets.HF_USERNAME }}
-        TARGET_HF_REPO: ${{ secrets.TARGET_HF_REPO }}
       run: |
-        # Set default values if not provided
-        HF_USERNAME="${HF_USERNAME:-your-username}"
-        TARGET_HF_REPO="${TARGET_HF_REPO:-huggingface.co/datasets/$HF_USERNAME/yahoo-finance-data}"
+        # Assuming the target HF repo follows the pattern: username/dataset-name
+        # You should update this to match your actual HF username and dataset name
+        HF_USERNAME="${{ github.repository_owner }}"
+        TARGET_HF_REPO="huggingface.co/datasets/$HF_USERNAME/yahoo-finance-data"
 
         # Add the HF remote
         git remote add hf-origin https://"$HF_USERNAME":"$HF_TOKEN"@"$TARGET_HF_REPO"

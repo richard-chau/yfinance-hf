@@ -61,17 +61,21 @@ def sync_from_upstream(repo_url, branch="main"):
 def push_to_target(target_repo_url, branch="main"):
     """Push the synced data to the target repository"""
     print(f"Pushing to target: {target_repo_url}")
-    
+
     # Add target remote if it doesn't exist
     remotes_result = run_command(["git", "remote", "-v"], check=False)
     if "target" not in remotes_result.stdout:
         print("Adding target remote...")
         run_command(["git", "remote", "add", "target", target_repo_url])
-    
+
     # Push to target
     print("Pushing to target...")
     run_command(["git", "push", "target", branch, "--force"])
-    
+
+    # Also push LFS objects
+    print("Pushing LFS objects...")
+    run_command(["git", "lfs", "push", "target", branch])
+
     print("Successfully pushed to target!")
 
 def main():
